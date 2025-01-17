@@ -71,23 +71,45 @@ struct LZ77 {
 }
 
 impl LZ77 {
-    fn generate_block(text: &str, start: i32) -> Block {
+    fn find_longest_common_fragment(start: i32) {
         
     }
 
+    fn generate_block(start: i32) -> Block {
+        let end = find_longest_common_fragment(start);
+
+        if end == len(text) {
+            end -= 1;
+        }
+
+        return Block {
+            start: start,
+            end: end,
+            letter: suff_arr.text[end],
+        };
+    }
+
     fn lz_77(text: &str) {
+        suff_arr = SuffixArray {
+            data_starts: [],
+            data_end: 0,
+            text: text,
+        };
+
         let mut vector_of_blocks: Vec<Block>;
         let mut actual_end = 0;
 
         let text_len = len(text);
 
         while actual_end != text_len {
-            vector_of_blocks.push(generate_block(text, actual_end));
+            vector_of_blocks.push(generate_block(actual_end));
 
             let block_len = vector_of_blocks.last().unwrap().length();
 
             actual_end += block_len;
         }
+
+        return vector_of_blocks;
     }
 }
 
