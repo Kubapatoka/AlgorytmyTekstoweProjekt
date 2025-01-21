@@ -14,16 +14,16 @@ impl Block {
     }
 }
 
-struct SuffixArray  {
+struct SuffixArray {
     data_starts: Vec<usize>,
     data_end: usize,
     text: String,
 }
 
 impl SuffixArray {
-    fn add_letter(&mut self) {
+    fn move_data_end(&mut self) {
         self.data_end += 1;
-        self.add(self.data_end);
+        println!("move data end to {}", self.data_end);
     }
 
     fn is_greater(&self, p1: usize, p2: usize) -> bool {
@@ -56,7 +56,11 @@ impl SuffixArray {
         let mut start = 0;
         let mut end = self.data_starts.len();
 
-        while start != end {
+        if end == 0 {
+            return 0;
+        }
+
+        while end > start + 1 {
             let mid = (start + end) / 2;
 
             if self.is_greater(self.data_starts[mid], sp) {
@@ -66,12 +70,19 @@ impl SuffixArray {
             }
         }
 
+        if self.is_greater(sp, self.data_starts[start]) {
+            return end;
+        }
+
         return start;
     }
 
     fn add(&mut self, start_pos: usize) {
+        println!("adding new start pos to data starts: {}", start_pos);
         let pos = self.binary_search_new_pos(start_pos);
-        self.data_starts.insert(pos, start_pos)
+        println!("pos in data: {}", pos);
+        self.data_starts.insert(pos, start_pos);
+        println!("added new start pos to data starts: {}", start_pos);
     }
 
     fn find_new_range_begin(
@@ -84,10 +95,15 @@ impl SuffixArray {
         let mut s = s_idx_sa;
         let mut e = e_idx_sa;
 
-        while e - s < 1 {
-            let mid = e + s / 2;
+        while e > s + 1 {
+            let mid = (e + s) / 2;
 
             let pos = self.data_starts[mid] + p_l;
+
+            println!(
+                "find new range begin s: {} e: {} mid: {} pos: {}",
+                s, e, mid, pos
+            );
 
             if pos > self.data_end {
                 s = mid + 1;
@@ -112,7 +128,7 @@ impl SuffixArray {
             return e;
         }
 
-        return 0;
+        return self.data_starts.len() + 1;
     }
 
     fn find_new_range_end(
@@ -125,10 +141,19 @@ impl SuffixArray {
         let mut s = s_idx_sa;
         let mut e = e_idx_sa;
 
-        while e - s < 1 {
-            let mid = e + s / 2;
+        if s > self.data_starts.len() {
+            return 0;
+        }
+
+        while e > s + 1 {
+            let mid = (e + s) / 2;
 
             let pos = self.data_starts[mid] + p_l;
+
+            println!(
+                "find new range end s: {} e: {} mid: {} pos: {}",
+                s, e, mid, pos
+            );
 
             if pos > self.data_end {
                 s = mid + 1;
@@ -170,6 +195,11 @@ impl SuffixArray {
 
         let letter_to_find = self.text.chars().nth(start + p_l).unwrap();
 
+        println!(
+            "find in range start: {}, patt_len: {}, pocz: {}, kon: {}, letter: {}",
+            start, pattern_len, s_idx_sa, e_idx_sa, letter_to_find
+        );
+
         // Step 1: move beginning of range
         let new_start = self.find_new_range_begin(s_idx_sa, e_idx_sa, p_l, letter_to_find);
         let new_end = self.find_new_range_end(new_start, e_idx_sa, p_l, letter_to_find);
@@ -178,46 +208,78 @@ impl SuffixArray {
     }
 }
 
-struct LZ77  {
-    suff_arr: SuffixArray ,
+struct LZ77 {
+    suff_arr: SuffixArray,
 }
 
-impl LZ77{
-    fn find_longest_common_fragment(&self, start: usize) -> usize {
+impl LZ77 {
+    fn find_longest_common_fragment(&mut self, start: usize) -> (usize, usize) {
         // text|pattern
 
+        for pos in &self.suff_arr.data_starts {
+            println!("data_starts: {}", pos);
+        }
+
+        if self.suff_arr.data_starts.len() == 0 {
+            self.suff_arr.add(start);
+            self.suff_arr.move_data_end();
+            return (0, 0);
+        }
+
         let mut s_range = 0;
-        let mut e_range = self.suff_arr.data_starts.len();
+        let mut e_range = self.suff_arr.data_starts.len() - 1;
+        println!(
+            "start find longest common fragment {}, starting range: {}-{}",
+            start, s_range, e_range
+        );
 
         for i in 0..(self.suff_arr.text.len() - start + 1) {
-            let n_r = self.suff_arr.find_in_range(start, 1, s_range, e_range);
+            let n_r = self.suff_arr.find_in_range(start, i + 1, s_range, e_range);
+            println!("new range: {}-{}", n_r.0, n_r.1);
 
-            if n_r.1 - n_r.0 < 1 {
-                return i;
+            if n_r.1 < n_r.0 {
+                self.suff_arr.move_data_end();
+                let pocz = self.suff_arr.data_starts[s_range];
+                for j in 0..=i {
+                    self.suff_arr.add(start + j);
+                }
+                if i == 0 {
+                    return (pocz, 0);
+                }
+                return (pocz, i);
             }
+            self.suff_arr.move_data_end();
 
             s_range = n_r.0;
             e_range = n_r.1;
         }
 
-        return 0;
+        return (0, 0);
     }
 
-    fn generate_block(&self, start: usize) -> Block {
-        let mut end = self.find_longest_common_fragment(start);
+    fn generate_block(&mut self, start: usize) -> Block {
+        let mut res = self.find_longest_common_fragment(start);
 
-        if end == self.suff_arr.text.len() {
-            end -= 1;
+        if start + res.1 == self.suff_arr.text.len() {
+            res.1 -= 1;
+        }
+
+        if res.0 == 0 && res.1 == 0 {
+            return Block {
+                start: 0,
+                end: 0,
+                letter: self.suff_arr.text.chars().nth(start).unwrap(),
+            };
         }
 
         return Block {
-            start: start,
-            end: end,
-            letter: self.suff_arr.text.chars().nth(end).unwrap(),
+            start: res.0 + 1,
+            end: res.0 + res.1,
+            letter: self.suff_arr.text.chars().nth(start + res.1).unwrap(),
         };
     }
 
-    fn lz_77(&self) -> Vec<Block> {
+    fn lz_77(&mut self) -> Vec<Block> {
         let mut vector_of_blocks: Vec<Block> = vec![];
         let mut actual_end = 0;
 
@@ -226,7 +288,14 @@ impl LZ77{
         while actual_end != text_len {
             vector_of_blocks.push(self.generate_block(actual_end));
 
-            let block_len = vector_of_blocks.last().unwrap().length();
+            let block = vector_of_blocks.last().unwrap();
+            let block_len = block.length();
+            println!("");
+            println!(
+                "New block: {} {} {} {}",
+                block.start, block.end, block.letter, block_len
+            );
+            println!("");
 
             actual_end += block_len;
         }
@@ -238,9 +307,12 @@ impl LZ77{
 fn main() {
     println!("Hello, world!");
 
-    let text = "aaabababababababbbabbabbabbaba";
+    let text = "aaababc";
 
-    let compress = LZ77 {
+    //let text = "aaabababababababbbabbabbabbaba";
+    println!("text len: {}", text.len());
+
+    let mut compress = LZ77 {
         suff_arr: SuffixArray {
             data_starts: vec![],
             data_end: 0,
@@ -250,7 +322,7 @@ fn main() {
 
     let v = compress.lz_77();
 
-    for b in v{
+    for b in v {
         println!("{}, {}, {}", b.start, b.end, b.letter);
     }
 }
