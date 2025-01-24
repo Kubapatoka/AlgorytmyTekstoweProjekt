@@ -1,3 +1,4 @@
+#[derive(Debug, PartialEq)]
 struct Block {
     start: usize,
     end: usize,
@@ -17,7 +18,7 @@ impl Block {
 struct SuffixArray {
     data_starts: Vec<usize>,
     data_end: usize,
-    text: String,
+    text: Vec<char>,
 }
 
 impl SuffixArray {
@@ -27,27 +28,17 @@ impl SuffixArray {
     }
 
     fn is_greater(&self, p1: usize, p2: usize) -> bool {
-        for i in 0..std::cmp::min(self.data_end - p1, self.data_end - p2) {
-            if self.text.chars().nth(p1 + i).unwrap() > self.text.chars().nth(p2 + i).unwrap() {
+        for i in 0..std::cmp::min(self.text.len() - p1, self.text.len() - p2) {
+            if self.text[p1 + i] > self.text[p2 + i] {
                 return true;
             }
-            if self.text.chars().nth(p1 + i).unwrap() < self.text.chars().nth(p2 + i).unwrap() {
+            if self.text[p1 + i] < self.text[p2 + i] {
                 return false;
             }
         }
 
         if p1 < p2 {
             return false;
-        }
-        return true;
-    }
-
-    // fragment p1..data_end begins p2..p2+p2_len
-    fn begins(&self, p1: usize, p2: usize, p2_len: usize) -> bool {
-        for i in 0..std::cmp::min(self.data_end - p1, p2_len) {
-            if self.text.chars().nth(p1 + i).unwrap() != self.text.chars().nth(p2 + i).unwrap() {
-                return false;
-            }
         }
         return true;
     }
@@ -110,21 +101,21 @@ impl SuffixArray {
                 continue;
             }
 
-            if self.text.chars().nth(pos).unwrap() >= letter_to_find {
+            if self.text[pos] >= letter_to_find {
                 e = mid;
                 continue;
             }
 
-            if self.text.chars().nth(pos).unwrap() < letter_to_find {
+            if self.text[pos] < letter_to_find {
                 s = mid + 1;
             }
         }
 
-        if self.text.chars().nth(self.data_starts[s] + p_l).unwrap() == letter_to_find {
+        if self.text[self.data_starts[s] + p_l] == letter_to_find {
             return s;
         }
 
-        if self.text.chars().nth(self.data_starts[e] + p_l).unwrap() == letter_to_find {
+        if self.text[self.data_starts[e] + p_l] == letter_to_find {
             return e;
         }
 
@@ -160,21 +151,21 @@ impl SuffixArray {
                 continue;
             }
 
-            if self.text.chars().nth(pos).unwrap() > letter_to_find {
+            if self.text[pos] > letter_to_find {
                 e = mid - 1;
                 continue;
             }
 
-            if self.text.chars().nth(pos).unwrap() <= letter_to_find {
+            if self.text[pos] <= letter_to_find {
                 s = mid;
             }
         }
 
-        if self.text.chars().nth(self.data_starts[e] + p_l).unwrap() == letter_to_find {
+        if self.text[self.data_starts[e] + p_l] == letter_to_find {
             return e;
         }
 
-        if self.text.chars().nth(self.data_starts[s] + p_l).unwrap() == letter_to_find {
+        if self.text[self.data_starts[s] + p_l] == letter_to_find {
             return s;
         }
 
@@ -193,7 +184,12 @@ impl SuffixArray {
         // So we need to check only last letter
         let p_l = pattern_len - 1;
 
-        let letter_to_find = self.text.chars().nth(start + p_l).unwrap();
+        if start + p_l >= self.text.len() {
+            // return incorrect range
+            return (e_idx_sa + 1, e_idx_sa);
+        }
+
+        let letter_to_find = self.text[start + p_l];
 
         println!(
             "find in range start: {}, patt_len: {}, pocz: {}, kon: {}, letter: {}",
@@ -244,7 +240,7 @@ impl LZ77 {
                     self.suff_arr.add(start + j);
                 }
                 if i == 0 {
-                    return (pocz, 0);
+                    return (0, 0);
                 }
                 return (pocz, i);
             }
@@ -264,18 +260,18 @@ impl LZ77 {
             res.1 -= 1;
         }
 
-        if res.0 == 0 && res.1 == 0 {
+        if res.1 == 0 {
             return Block {
                 start: 0,
                 end: 0,
-                letter: self.suff_arr.text.chars().nth(start).unwrap(),
+                letter: self.suff_arr.text[start],
             };
         }
 
         return Block {
             start: res.0 + 1,
             end: res.0 + res.1,
-            letter: self.suff_arr.text.chars().nth(start + res.1).unwrap(),
+            letter: self.suff_arr.text[start + res.1],
         };
     }
 
@@ -316,7 +312,7 @@ fn main() {
         suff_arr: SuffixArray {
             data_starts: vec![],
             data_end: 0,
-            text: text.to_string(),
+            text: text.to_string().chars().collect::<Vec<_>>(),
         },
     };
 
@@ -324,5 +320,239 @@ fn main() {
 
     for b in v {
         println!("{}, {}, {}", b.start, b.end, b.letter);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::Block;
+    use crate::SuffixArray;
+    use crate::LZ77;
+
+    #[test]
+    fn short_text_1() {
+        let text = "a";
+        let mut compress = LZ77 {
+            suff_arr: SuffixArray {
+                data_starts: vec![],
+                data_end: 0,
+                text: text.to_string().chars().collect::<Vec<_>>(),
+            },
+        };
+
+        let v = compress.lz_77();
+        assert_eq!(
+            v,
+            vec![Block {
+                start: 0,
+                end: 0,
+                letter: 'a'
+            }]
+        );
+    }
+
+    #[test]
+    fn short_text_2() {
+        let text = "ab";
+        let mut compress = LZ77 {
+            suff_arr: SuffixArray {
+                data_starts: vec![],
+                data_end: 0,
+                text: text.to_string().chars().collect::<Vec<_>>(),
+            },
+        };
+
+        let v = compress.lz_77();
+        assert_eq!(
+            v,
+            vec![
+                Block {
+                    start: 0,
+                    end: 0,
+                    letter: 'a'
+                },
+                Block {
+                    start: 0,
+                    end: 0,
+                    letter: 'b'
+                }
+            ]
+        );
+    }
+
+    #[test]
+    fn short_text_3() {
+        let text = "";
+        let mut compress = LZ77 {
+            suff_arr: SuffixArray {
+                data_starts: vec![],
+                data_end: 0,
+                text: text.to_string().chars().collect::<Vec<_>>(),
+            },
+        };
+
+        let v = compress.lz_77();
+        assert_eq!(v, vec![]);
+    }
+
+    #[test]
+    fn short_text_4() {
+        let text = "aaababc";
+        let mut compress = LZ77 {
+            suff_arr: SuffixArray {
+                data_starts: vec![],
+                data_end: 0,
+                text: text.to_string().chars().collect::<Vec<_>>(),
+            },
+        };
+
+        let v = compress.lz_77();
+        assert_eq!(
+            v,
+            vec![
+                Block {
+                    start: 0,
+                    end: 0,
+                    letter: 'a'
+                },
+                Block {
+                    start: 1,
+                    end: 2,
+                    letter: 'b'
+                },
+                Block {
+                    start: 3,
+                    end: 4,
+                    letter: 'c'
+                }
+            ]
+        );
+    }
+
+    #[test]
+    fn short_text_5() {
+        let text = "banana";
+        let mut compress = LZ77 {
+            suff_arr: SuffixArray {
+                data_starts: vec![],
+                data_end: 0,
+                text: text.to_string().chars().collect::<Vec<_>>(),
+            },
+        };
+
+        let v = compress.lz_77();
+        assert_eq!(
+            v,
+            vec![
+                Block {
+                    start: 0,
+                    end: 0,
+                    letter: 'b'
+                },
+                Block {
+                    start: 0,
+                    end: 0,
+                    letter: 'a'
+                },
+                Block {
+                    start: 0,
+                    end: 0,
+                    letter: 'n'
+                },
+                Block {
+                    start: 2,
+                    end: 3,
+                    letter: 'a'
+                }
+            ]
+        );
+    }
+
+    #[test]
+    fn short_text_6() {
+        let text = "bananas";
+        let mut compress = LZ77 {
+            suff_arr: SuffixArray {
+                data_starts: vec![],
+                data_end: 0,
+                text: text.to_string().chars().collect::<Vec<_>>(),
+            },
+        };
+
+        let v = compress.lz_77();
+        assert_eq!(
+            v,
+            vec![
+                Block {
+                    start: 0,
+                    end: 0,
+                    letter: 'b'
+                },
+                Block {
+                    start: 0,
+                    end: 0,
+                    letter: 'a'
+                },
+                Block {
+                    start: 0,
+                    end: 0,
+                    letter: 'n'
+                },
+                Block {
+                    start: 2,
+                    end: 4,
+                    letter: 's'
+                }
+            ]
+        );
+    }
+
+    #[test]
+    fn short_text_7() {
+        let text = "missisipi";
+        let mut compress = LZ77 {
+            suff_arr: SuffixArray {
+                data_starts: vec![],
+                data_end: 0,
+                text: text.to_string().chars().collect::<Vec<_>>(),
+            },
+        };
+
+        let v = compress.lz_77();
+        assert_eq!(
+            v,
+            vec![
+                Block {
+                    start: 0,
+                    end: 0,
+                    letter: 'm'
+                },
+                Block {
+                    start: 0,
+                    end: 0,
+                    letter: 'i'
+                },
+                Block {
+                    start: 0,
+                    end: 0,
+                    letter: 's'
+                },
+                Block {
+                    start: 3,
+                    end: 3,
+                    letter: 'i'
+                },
+                Block {
+                    start: 4,
+                    end: 5,
+                    letter: 'p'
+                },
+                Block {
+                    start: 0,
+                    end: 0,
+                    letter: 'i'
+                },
+            ]
+        );
     }
 }
