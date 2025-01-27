@@ -1,3 +1,6 @@
+use std::vec;
+use std::fs;
+
 #[derive(Debug, PartialEq)]
 struct Block {
     start: usize,
@@ -24,7 +27,7 @@ struct SuffixArray {
 impl SuffixArray {
     fn move_data_end(&mut self) {
         self.data_end += 1;
-        println!("move data end to {}", self.data_end);
+        // println!("move data end to {}", self.data_end);
     }
 
     fn is_greater(&self, p1: usize, p2: usize) -> bool {
@@ -69,11 +72,11 @@ impl SuffixArray {
     }
 
     fn add(&mut self, start_pos: usize) {
-        println!("adding new start pos to data starts: {}", start_pos);
+        // println!("adding new start pos to data starts: {}", start_pos);
         let pos = self.binary_search_new_pos(start_pos);
-        println!("pos in data: {}", pos);
+        // println!("pos in data: {}", pos);
         self.data_starts.insert(pos, start_pos);
-        println!("added new start pos to data starts: {}", start_pos);
+        // println!("added new start pos to data starts: {}", start_pos);
     }
 
     fn find_new_range_begin(
@@ -91,10 +94,10 @@ impl SuffixArray {
 
             let pos = self.data_starts[mid] + p_l;
 
-            println!(
-                "find new range begin s: {} e: {} mid: {} pos: {}",
-                s, e, mid, pos
-            );
+            // println!(
+            //     "find new range begin s: {} e: {} mid: {} pos: {}",
+            //     s, e, mid, pos
+            // );
 
             if pos > self.data_end {
                 s = mid + 1;
@@ -141,10 +144,10 @@ impl SuffixArray {
 
             let pos = self.data_starts[mid] + p_l;
 
-            println!(
-                "find new range end s: {} e: {} mid: {} pos: {}",
-                s, e, mid, pos
-            );
+            // println!(
+            //     "find new range end s: {} e: {} mid: {} pos: {}",
+            //     s, e, mid, pos
+            // );
 
             if pos > self.data_end {
                 s = mid + 1;
@@ -191,10 +194,10 @@ impl SuffixArray {
 
         let letter_to_find = self.text[start + p_l];
 
-        println!(
-            "find in range start: {}, patt_len: {}, pocz: {}, kon: {}, letter: {}",
-            start, pattern_len, s_idx_sa, e_idx_sa, letter_to_find
-        );
+        // println!(
+        //     "find in range start: {}, patt_len: {}, pocz: {}, kon: {}, letter: {}",
+        //     start, pattern_len, s_idx_sa, e_idx_sa, letter_to_find
+        // );
 
         // Step 1: move beginning of range
         let new_start = self.find_new_range_begin(s_idx_sa, e_idx_sa, p_l, letter_to_find);
@@ -212,9 +215,9 @@ impl LZ77 {
     fn find_longest_common_fragment(&mut self, start: usize) -> (usize, usize) {
         // text|pattern
 
-        for pos in &self.suff_arr.data_starts {
-            println!("data_starts: {}", pos);
-        }
+        // for pos in &self.suff_arr.data_starts {
+        //     println!("data_starts: {}", pos);
+        // }
 
         if self.suff_arr.data_starts.len() == 0 {
             self.suff_arr.add(start);
@@ -224,14 +227,14 @@ impl LZ77 {
 
         let mut s_range = 0;
         let mut e_range = self.suff_arr.data_starts.len() - 1;
-        println!(
-            "start find longest common fragment {}, starting range: {}-{}",
-            start, s_range, e_range
-        );
+        // println!(
+        //     "start find longest common fragment {}, starting range: {}-{}",
+        //     start, s_range, e_range
+        // );
 
         for i in 0..(self.suff_arr.text.len() - start + 1) {
             let n_r = self.suff_arr.find_in_range(start, i + 1, s_range, e_range);
-            println!("new range: {}-{}", n_r.0, n_r.1);
+            // println!("new range: {}-{}", n_r.0, n_r.1);
 
             if n_r.1 < n_r.0 {
                 self.suff_arr.move_data_end();
@@ -286,12 +289,12 @@ impl LZ77 {
 
             let block = vector_of_blocks.last().unwrap();
             let block_len = block.length();
-            println!("");
-            println!(
-                "New block: {} {} {} {}",
-                block.start, block.end, block.letter, block_len
-            );
-            println!("");
+            // println!("");
+            // println!(
+            //     "New block: {} {} {} {}",
+            //     block.start, block.end, block.letter, block_len
+            // );
+            // println!("");
 
             actual_end += block_len;
         }
@@ -300,13 +303,9 @@ impl LZ77 {
     }
 }
 
-fn main() {
-    println!("Hello, world!");
-
-    let text = "aaababc";
-
-    //let text = "aaabababababababbbabbabbabbaba";
-    println!("text len: {}", text.len());
+fn do77(text: String) {
+    println!("\n");
+    println!("text_len: {}", text.len());
 
     let mut compress = LZ77 {
         suff_arr: SuffixArray {
@@ -317,9 +316,27 @@ fn main() {
     };
 
     let v = compress.lz_77();
+    println!("number of blocks: {}", v.len());
+    // for b in v {
+    //     println!("{}, {}, {}", b.start, b.end, b.letter);
+    // }
+}
 
-    for b in v {
-        println!("{}, {}, {}", b.start, b.end, b.letter);
+fn main() {
+    let mut texts: Vec<String> = vec![];
+
+    texts.push(fs::read_to_string("text1.txt").unwrap());
+    texts.push(fs::read_to_string("text2.txt").unwrap());
+    texts.push(fs::read_to_string("text3.txt").unwrap());
+    texts.push(fs::read_to_string("text4.txt").unwrap());
+    texts.push(fs::read_to_string("text5.txt").unwrap());
+    texts.push(fs::read_to_string("text6.txt").unwrap());
+    texts.push(fs::read_to_string("text7.txt").unwrap());
+    texts.push(fs::read_to_string("text8.txt").unwrap());
+
+
+    for t in texts {
+        do77(t);
     }
 }
 
@@ -551,6 +568,80 @@ mod tests {
                     start: 0,
                     end: 0,
                     letter: 'i'
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn short_text_8() {
+        let text = "Lorem Ipsum";
+        let mut compress = LZ77 {
+            suff_arr: SuffixArray {
+                data_starts: vec![],
+                data_end: 0,
+                text: text.to_string().chars().collect::<Vec<_>>(),
+            },
+        };
+
+        let v = compress.lz_77();
+        assert_eq!(
+            v,
+            vec![
+                Block {
+                    start: 0,
+                    end: 0,
+                    letter: 'L'
+                },
+                Block {
+                    start: 0,
+                    end: 0,
+                    letter: 'o'
+                },
+                Block {
+                    start: 0,
+                    end: 0,
+                    letter: 'r'
+                },
+                Block {
+                    start: 0,
+                    end: 0,
+                    letter: 'e'
+                },
+                Block {
+                    start: 0,
+                    end: 0,
+                    letter: 'm'
+                },
+                Block {
+                    start: 0,
+                    end: 0,
+                    letter: ' '
+                },
+                Block {
+                    start: 0,
+                    end: 0,
+                    letter: 'I'
+                },
+                Block {
+                    start: 0,
+                    end: 0,
+                    letter: 'p'
+                },
+                Block {
+                    start: 0,
+                    end: 0,
+                    letter: 's'
+                },
+                Block {
+                    start: 0,
+                    end: 0,
+                    letter: 'u'
+                },
+                Block {
+                    start: 0,
+                    end: 0,
+                    letter: 'm'
                 },
             ]
         );
